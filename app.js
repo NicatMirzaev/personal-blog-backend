@@ -4,16 +4,34 @@ const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const cors = require("cors");
 const session = require("express-session");
+const jwt = require("jsonwebtoken");
 const User = require("./models/user");
 const passport = require("./lib/passport")(User);
+const { SECRET_KEY } = require("./lib/config");
 
 require("./lib/db");
 
 const indexRouter = require("./routes/index");
-const usersRouter = require("./routes/users");
+const usersRouter = require("./routes/users")(User);
 const authRouter = require("./routes/auth")(passport);
 
 const app = express();
+
+// auth middleware
+const authMiddleware = (req, res, next) => {
+  try {
+    const token = req.get("Authorization").slice(7);
+    if (!token) {
+      req.user = null;
+    } else {
+      req.user = jwt.verify(token, SECRET_KEY);
+    }
+    next();
+  } catch (error) {
+    req.user = null;
+    next();
+  }
+};
 
 app.use(logger("dev"));
 app.use(express.json());
@@ -22,6 +40,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(passport.initialize());
 app.use(cors());
+app.use(authMiddleware);
 app.set("trust proxy", 1); // trust first proxy
 app.use(
   session({

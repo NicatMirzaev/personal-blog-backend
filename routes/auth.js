@@ -16,9 +16,13 @@ module.exports = (passport) => {
     passport.authenticate("google", { session: false }),
     (req, res) => {
       // Successful authentication, redirect frontend.
-      const token = jwt.sign({ id: req.user._id }, SECRET_KEY, {
-        expiresIn: "30d",
-      });
+      const token = jwt.sign(
+        { id: req.user._id === undefined ? req.user[0]._id : req.user._id },
+        SECRET_KEY,
+        {
+          expiresIn: "30d",
+        }
+      );
       res.redirect(`${FRONTEND_URL}/login-success?token=${token}`);
     }
   );
@@ -33,9 +37,13 @@ module.exports = (passport) => {
     passport.authenticate("twitter", { session: false }),
     (req, res) => {
       // Successful authentication, redirect frontend.
-      const token = jwt.sign({ id: req.user._id }, SECRET_KEY, {
-        expiresIn: "30d",
-      });
+      const token = jwt.sign(
+        { id: req.user._id === undefined ? req.user[0]._id : req.user._id },
+        SECRET_KEY,
+        {
+          expiresIn: "30d",
+        }
+      );
       res.redirect(`${FRONTEND_URL}/login-success?token=${token}`);
     }
   );
@@ -50,9 +58,13 @@ module.exports = (passport) => {
     passport.authenticate("github", { session: false }),
     (req, res) => {
       // Successful authentication, redirect frontend.
-      const token = jwt.sign({ id: req.user._id }, SECRET_KEY, {
-        expiresIn: "30d",
-      });
+      const token = jwt.sign(
+        { id: req.user._id === undefined ? req.user[0]._id : req.user._id },
+        SECRET_KEY,
+        {
+          expiresIn: "30d",
+        }
+      );
       res.redirect(`${FRONTEND_URL}/login-success?token=${token}`);
     }
   );
