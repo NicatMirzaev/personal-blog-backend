@@ -6,6 +6,7 @@ const cors = require("cors");
 const session = require("express-session");
 const jwt = require("jsonwebtoken");
 const User = require("./models/user");
+const Blog = require("./models/blog");
 const passport = require("./lib/passport")(User);
 const { SECRET_KEY } = require("./lib/config");
 
@@ -13,6 +14,7 @@ require("./lib/db");
 
 const indexRouter = require("./routes/index");
 const usersRouter = require("./routes/users")(User);
+const blogsRouter = require("./routes/blogs")(User, Blog);
 const authRouter = require("./routes/auth")(passport);
 
 const app = express();
@@ -53,6 +55,7 @@ app.use(
 
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
+app.use("/blogs", blogsRouter);
 app.use("/auth", authRouter);
 
 module.exports = app;
