@@ -35,7 +35,7 @@ const blogSchema = new Schema({
     default: 0,
   },
   createdAt: {
-    type: Date,
+    type: Number,
     default: Date.now(),
   },
 });

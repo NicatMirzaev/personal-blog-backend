@@ -22,8 +22,12 @@ const userSchema = new Schema({
     type: String,
     required: false,
   },
+  moderator: {
+    type: Boolean,
+    required: false,
+  },
   createdAt: {
-    type: Date,
+    type: Number,
     default: Date.now(),
   },
 });

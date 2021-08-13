@@ -38,7 +38,7 @@ module.exports = (User, Blog) => {
     )
       return res.status(400).send(EMPTY);
 
-    fs.writeFile(`${slug}.txt`, content, (err) => {
+    fs.writeFile(`blogs/${slug}.txt`, content, (err) => {
       if (err) throw err;
       console.log(`File ${slug}.txt created successfully.`);
     });
