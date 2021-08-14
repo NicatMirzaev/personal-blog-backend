@@ -10,8 +10,8 @@ const {
   EMPTY,
 } = require("../lib/error-codes");
 
-module.exports = (User, Blog) => {
-  router.post("/add-blog", async (req, res) => {
+module.exports = (User, Post) => {
+  router.post("/add-post", async (req, res) => {
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
     const user = await User.findById(req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
@@ -38,19 +38,29 @@ module.exports = (User, Blog) => {
     )
       return res.status(400).send(EMPTY);
 
-    fs.writeFile(`blogs/${slug}.txt`, content, (err) => {
+    fs.writeFile(`posts/${slug}.txt`, content, (err) => {
       if (err) throw err;
       console.log(`File ${slug}.txt created successfully.`);
     });
-    const blog = new Blog({
+    const post = new Post({
       title,
       img,
       summary,
       slug,
       category,
     });
-    await blog.save();
-    return res.status(200).send(blog);
+    await post.save();
+    return res.status(200).send(post);
+  });
+
+  router.get("/popular-posts", async (req, res) => {
+    const posts = await Post.find().sort({ likes: "desc" }).limit(3);
+    return res.status(200).send(posts);
+  });
+
+  router.get("/latest-posts", async (req, res) => {
+    const posts = await Post.find().sort({ createdAt: "desc" }).limit(3);
+    return res.status(200).send(posts);
   });
   return router;
 };
