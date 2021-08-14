@@ -8,6 +8,8 @@ const {
   TITLE_LENGTH,
   SLUG_LENGTH,
   EMPTY,
+  POST_NOT_FOUND,
+  POST_CONTENT_NOT_FOUND,
 } = require("../lib/error-codes");
 
 module.exports = (User, Post) => {
@@ -61,6 +63,21 @@ module.exports = (User, Post) => {
   router.get("/latest-posts", async (req, res) => {
     const posts = await Post.find().sort({ createdAt: "desc" }).limit(3);
     return res.status(200).send(posts);
+  });
+
+  router.post("/get-post-by-slug", async (req, res) => {
+    const { slug } = req.body;
+    const post = await Post.find({ slug });
+    if (!post) return res.status(404).send(POST_NOT_FOUND);
+    let content = "";
+    try {
+      content = fs.readFileSync(`posts/${slug}.txt`);
+    } catch (err) {
+      console.log(err);
+      return res.status(404).send(POST_CONTENT_NOT_FOUND);
+    }
+    post.content = content;
+    return res.status(200).send(post);
   });
   return router;
 };
