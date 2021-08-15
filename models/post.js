@@ -30,6 +30,10 @@ const postSchema = new Schema({
     type: Number,
     default: 0,
   },
+  content: {
+    type: String,
+    required: false,
+  },
   comments: {
     type: Number,
     default: 0,

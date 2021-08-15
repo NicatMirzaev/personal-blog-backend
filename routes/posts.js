@@ -76,8 +76,9 @@ module.exports = (User, Post) => {
       console.log(err);
       return res.status(404).send(POST_CONTENT_NOT_FOUND);
     }
-    post.content = content;
-    return res.status(200).send(post);
+    const data = post[0];
+    data.content = content;
+    return res.status(200).send(data);
   });
   return router;
 };
