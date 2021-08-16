@@ -1,4 +1,3 @@
-const fs = require("fs");
 const express = require("express");
 const router = express.Router();
 const {
@@ -61,11 +60,21 @@ module.exports = (User, Post) => {
     return res.status(200).send(posts);
   });
 
-  router.post("/get-post-by-slug", async (req, res) => {
-    const { slug } = req.body;
-    const post = await Post.find({ slug });
-    if (!post.length) return res.status(404).send(POST_NOT_FOUND);
-    return res.status(200).send(post[0]);
+  router.get("/get-post-by-slug", async (req, res) => {
+    const { slug } = req.query;
+    if (slug === undefined) return res.status(400).send(INVALID_SYNTAX);
+    const post = await Post.findOne({ slug });
+    if (!post) return res.status(404).send(POST_NOT_FOUND);
+    post.views += 1;
+    post.save();
+    return res.status(200).send(post);
+  });
+
+  router.get("/get-posts-by-category", async (req, res) => {
+    const { category } = req.query;
+    if (category === undefined) return res.status(400).send(INVALID_SYNTAX);
+    const posts = await Post.find({ category });
+    return res.status(200).send(posts);
   });
   return router;
 };
