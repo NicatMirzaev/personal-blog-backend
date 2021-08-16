@@ -9,7 +9,6 @@ const {
   SLUG_LENGTH,
   EMPTY,
   POST_NOT_FOUND,
-  POST_CONTENT_NOT_FOUND,
 } = require("../lib/error-codes");
 
 module.exports = (User, Post) => {
@@ -40,15 +39,12 @@ module.exports = (User, Post) => {
     )
       return res.status(400).send(EMPTY);
 
-    fs.writeFile(`posts/${slug}.txt`, content, (err) => {
-      if (err) throw err;
-      console.log(`File ${slug}.txt created successfully.`);
-    });
     const post = new Post({
       title,
       img,
       summary,
       slug,
+      content,
       category,
     });
     await post.save();
@@ -68,17 +64,8 @@ module.exports = (User, Post) => {
   router.post("/get-post-by-slug", async (req, res) => {
     const { slug } = req.body;
     const post = await Post.find({ slug });
-    if (!post) return res.status(404).send(POST_NOT_FOUND);
-    let content = "";
-    try {
-      content = fs.readFileSync(`posts/${slug}.txt`);
-    } catch (err) {
-      console.log(err);
-      return res.status(404).send(POST_CONTENT_NOT_FOUND);
-    }
-    const data = post[0];
-    data.content = content;
-    return res.status(200).send(data);
+    if (!post.length) return res.status(404).send(POST_NOT_FOUND);
+    return res.status(200).send(post[0]);
   });
   return router;
 };
