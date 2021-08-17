@@ -10,7 +10,7 @@ const {
   POST_NOT_FOUND,
 } = require("../lib/error-codes");
 
-module.exports = (User, Post) => {
+module.exports = (User, Post, Comment) => {
   router.post("/add-post", async (req, res) => {
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
     const user = await User.findById(req.user.id);
@@ -98,18 +98,33 @@ module.exports = (User, Post) => {
     return res.status(200).send({ post, user });
   });
 
-  /* router.get("/get-is-liked", async (req, res) => {
-    const { postId } = req.query;
+  router.post("/add-comment", async (req, res) => {
+    const { postId, message } = req.body;
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
     const user = await User.findById(req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
-    if (postId === undefined) return res.status(400).send(INVALID_SYNTAX);
-    const isLiked = await Like.findOne({
-      userId: user._id,
-      likedId: postId,
+    if (postId === undefined || message === undefined)
+      return res.status(400).send(INVALID_SYNTAX);
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).send(POST_NOT_FOUND);
+    const messageLength = message.split(" ").join("").length;
+    if (messageLength < 2) return res.status(400).send(EMPTY);
+    const comment = new Comment({
+      senderId: user._id,
+      postId: post._id,
+      message,
     });
-    if (isLiked) return res.status(200).send({ isLiked: true });
-    return res.status(200).send({ isLiked: false });
-  }); */
+    post.comments += 1;
+    comment.save();
+    post.save();
+    return res.status(200).send({ post, comment });
+  });
+
+  router.get("/get-comments", async (req, res) => {
+    const { postId } = req.query;
+    if (postId === undefined) return res.status(400).send(INVALID_SYNTAX);
+    const comments = await Comment.find({ postId }).sort({ createdAt: "desc" });
+    return res.status(200).send(comments);
+  });
   return router;
 };

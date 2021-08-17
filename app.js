@@ -7,6 +7,7 @@ const session = require("express-session");
 const jwt = require("jsonwebtoken");
 const User = require("./models/user");
 const Post = require("./models/post");
+const Comment = require("./models/comment");
 const passport = require("./lib/passport")(User);
 const { SECRET_KEY } = require("./lib/config");
 
@@ -14,7 +15,7 @@ require("./lib/db");
 
 const indexRouter = require("./routes/index");
 const usersRouter = require("./routes/users")(User);
-const postsRouter = require("./routes/posts")(User, Post);
+const postsRouter = require("./routes/posts")(User, Post, Comment);
 const authRouter = require("./routes/auth")(passport);
 
 const app = express();
