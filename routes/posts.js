@@ -76,5 +76,40 @@ module.exports = (User, Post) => {
     const posts = await Post.find({ category });
     return res.status(200).send(posts);
   });
+
+  router.post("/like-post", async (req, res) => {
+    const { postId } = req.body;
+    if (!req.user) return res.status(400).send(INVALID_TOKEN);
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(401).send(INVALID_TOKEN);
+    if (postId === undefined) return res.status(400).send(INVALID_SYNTAX);
+    const post = await Post.findOne({ _id: postId });
+    if (!post) return res.status(404).send(POST_NOT_FOUND);
+
+    if (user.likes.includes(post._id)) {
+      user.likes.pull(post._id);
+      post.likes -= 1;
+    } else {
+      user.likes.push(post._id);
+      post.likes += 1;
+    }
+    user.save();
+    post.save();
+    return res.status(200).send({ post, user });
+  });
+
+  /* router.get("/get-is-liked", async (req, res) => {
+    const { postId } = req.query;
+    if (!req.user) return res.status(400).send(INVALID_TOKEN);
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(401).send(INVALID_TOKEN);
+    if (postId === undefined) return res.status(400).send(INVALID_SYNTAX);
+    const isLiked = await Like.findOne({
+      userId: user._id,
+      likedId: postId,
+    });
+    if (isLiked) return res.status(200).send({ isLiked: true });
+    return res.status(200).send({ isLiked: false });
+  }); */
   return router;
 };

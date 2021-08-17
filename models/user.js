@@ -26,6 +26,10 @@ const userSchema = new Schema({
     type: Boolean,
     required: false,
   },
+  likes: {
+    type: [String],
+    required: false,
+  },
   createdAt: {
     type: Number,
     default: Date.now(),
