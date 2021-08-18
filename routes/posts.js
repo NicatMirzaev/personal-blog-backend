@@ -52,6 +52,46 @@ module.exports = (User, Post, Comment) => {
     return res.status(200).send(post);
   });
 
+  router.post("/update-post", async (req, res) => {
+    if (!req.user) return res.status(400).send(INVALID_TOKEN);
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(401).send(INVALID_TOKEN);
+    if (user.moderator !== true) return res.status(401).send(PERMISSION);
+    const { postId, title, img, summary, content, slug, category } = req.body;
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).send(POST_NOT_FOUND);
+    if (
+      postId === undefined ||
+      title === undefined ||
+      img === undefined ||
+      summary === undefined ||
+      content === undefined ||
+      slug === undefined ||
+      category === undefined
+    )
+      return res.status(400).send(INVALID_SYNTAX);
+    if (title.length < 5 || title.length > 100)
+      return res.status(400).send(TITLE_LENGTH);
+    if (slug.length < 3 || slug.length > 40)
+      return res.status(400).send(SLUG_LENGTH);
+    if (
+      img.length < 1 ||
+      summary.length < 1 ||
+      content.length < 1 ||
+      category.length < 1
+    )
+      return res.status(400).send(EMPTY);
+
+    post.title = title;
+    post.img = img;
+    post.summary = summary;
+    post.content = content;
+    post.slug = slug;
+    post.category = category;
+    post.save();
+    return res.status(200).send({ updated: true });
+  });
+
   router.get("/popular-posts", async (req, res) => {
     const posts = await Post.find().sort({ likes: "desc" }).limit(3);
     return res.status(200).send(posts);
@@ -69,6 +109,14 @@ module.exports = (User, Post, Comment) => {
     if (!post) return res.status(404).send(POST_NOT_FOUND);
     post.views += 1;
     post.save();
+    return res.status(200).send(post);
+  });
+
+  router.get("/get-post-by-id", async (req, res) => {
+    const { id } = req.query;
+    if (id === undefined) return res.status(400).send(INVALID_SYNTAX);
+    const post = await Post.findById(id);
+    if (!post) return res.status(404).send(POST_NOT_FOUND);
     return res.status(200).send(post);
   });
 
@@ -156,11 +204,32 @@ module.exports = (User, Post, Comment) => {
     if (!comment) return res.status(404).send(COMMENT_NOT_FOUND);
     console.log(user);
     console.log(comment);
+    // eslint-disable-next-line eqeqeq
     if (user.moderator !== true && user._id != comment.senderId)
       return res.status(401).send(PERMISSION);
     comment.remove();
     return res.status(200).send({ deleted: true });
   });
 
+  router.post("/like-comment", async (req, res) => {
+    const { commentId } = req.body;
+    if (!req.user) return res.status(400).send(INVALID_TOKEN);
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(401).send(INVALID_TOKEN);
+    if (commentId === undefined) return res.status(400).send(INVALID_SYNTAX);
+    const comment = await Comment.findById(commentId);
+    if (!comment) return res.status(404).send(COMMENT_NOT_FOUND);
+
+    if (user.likes.includes(comment._id)) {
+      user.likes.pull(comment._id);
+      comment.likes -= 1;
+    } else {
+      user.likes.push(comment._id);
+      comment.likes += 1;
+    }
+    user.save();
+    comment.save();
+    return res.status(200).send({ comment, user });
+  });
   return router;
 };
