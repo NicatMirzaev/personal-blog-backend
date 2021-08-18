@@ -8,6 +8,7 @@ const {
   SLUG_LENGTH,
   EMPTY,
   POST_NOT_FOUND,
+  COMMENT_NOT_FOUND,
 } = require("../lib/error-codes");
 
 module.exports = (User, Post, Comment) => {
@@ -45,6 +46,7 @@ module.exports = (User, Post, Comment) => {
       slug,
       content,
       category,
+      createdAt: Date.now(),
     });
     await post.save();
     return res.status(200).send(post);
@@ -76,7 +78,23 @@ module.exports = (User, Post, Comment) => {
     const posts = await Post.find({ category });
     return res.status(200).send(posts);
   });
+  router.post("/delete-post", async (req, res) => {
+    const { postId } = req.body;
+    if (!req.user) return res.status(400).send(INVALID_TOKEN);
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(401).send(INVALID_TOKEN);
+    if (postId === undefined) return res.status(400).send(INVALID_SYNTAX);
+    const post = await Post.findOne({ _id: postId });
+    if (!post) return res.status(404).send(POST_NOT_FOUND);
+    if (user.moderator !== true) return res.status(401).send(PERMISSION);
 
+    post.remove();
+    Comment.find({ postId: post._id }, (docs) => {
+      if (docs) docs.remove();
+    });
+
+    return res.status(200).send({ deleted: true });
+  });
   router.post("/like-post", async (req, res) => {
     const { postId } = req.body;
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
@@ -113,6 +131,7 @@ module.exports = (User, Post, Comment) => {
       senderId: user._id,
       postId: post._id,
       message,
+      createdAt: Date.now(),
     });
     post.comments += 1;
     comment.save();
@@ -126,5 +145,22 @@ module.exports = (User, Post, Comment) => {
     const comments = await Comment.find({ postId }).sort({ createdAt: "desc" });
     return res.status(200).send(comments);
   });
+
+  router.post("/delete-comment", async (req, res) => {
+    const { commentId } = req.body;
+    if (!req.user) return res.status(400).send(INVALID_TOKEN);
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(401).send(INVALID_TOKEN);
+    if (commentId === undefined) return res.status(400).send(INVALID_SYNTAX);
+    const comment = await Comment.findById(commentId);
+    if (!comment) return res.status(404).send(COMMENT_NOT_FOUND);
+    console.log(user);
+    console.log(comment);
+    if (user.moderator !== true && user._id != comment.senderId)
+      return res.status(401).send(PERMISSION);
+    comment.remove();
+    return res.status(200).send({ deleted: true });
+  });
+
   return router;
 };
