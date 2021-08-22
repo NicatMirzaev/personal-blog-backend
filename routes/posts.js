@@ -102,6 +102,24 @@ module.exports = (User, Post, Comment) => {
     return res.status(200).send(posts);
   });
 
+  router.get("/get-posts", async (req, res) => {
+    const { title, category } = req.query;
+    const filters = {};
+    if (title !== undefined && title.length) {
+      filters.title = { $regex: title, $options: "i" };
+    }
+    if (category !== undefined && category !== "All") {
+      filters.category = category;
+    }
+    let posts = [];
+    if (Object.keys(filters).length > 0) {
+      posts = await Post.find(filters);
+    } else {
+      posts = await Post.find();
+    }
+    return res.status(200).send(posts);
+  });
+
   router.get("/get-post-by-slug", async (req, res) => {
     const { slug } = req.query;
     if (slug === undefined) return res.status(400).send(INVALID_SYNTAX);
