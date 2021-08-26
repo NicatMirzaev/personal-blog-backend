@@ -1,33 +1,42 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const router = express.Router();
 const {
   INVALID_TOKEN,
   INVALID_SYNTAX,
   BIO_LENGTH,
   NAME_LENGTH,
+  PERMISSION,
 } = require("../lib/error-codes");
 
-module.exports = (User) => {
+module.exports = (User, Post, Comment) => {
   router.post("/update", async (req, res) => {
-    const { bio, displayName, profileImg } = req.body;
+    const { userId, bio, displayName, profileImg } = req.body;
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(401).send(INVALID_TOKEN);
     if (
       bio === undefined ||
       displayName === undefined ||
-      profileImg === undefined
+      profileImg === undefined ||
+      userId === undefined
     )
       return res.status(400).send(INVALID_SYNTAX);
+
+    const user = await User.findById(req.user.id);
+    const targetUser = await User.findById(userId);
+    if (!user || !targetUser) return res.status(401).send(INVALID_TOKEN);
+
+    // eslint-disable-next-line eqeqeq
+    if (user.moderator !== true && user._id != userId)
+      return res.status(401).send(PERMISSION);
     if (bio.length > 300) return res.status(400).send(BIO_LENGTH);
     if (displayName.length < 3 || displayName.length > 50)
       return res.status(400).send(NAME_LENGTH);
 
-    user.bio = bio;
-    user.displayName = displayName;
-    user.profileImg = profileImg;
-    await user.save();
-    return res.status(200).send(user);
+    targetUser.bio = bio;
+    targetUser.displayName = displayName;
+    targetUser.profileImg = profileImg;
+    await targetUser.save();
+    return res.status(200).send(targetUser);
   });
   router.get("/me", async (req, res) => {
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
@@ -38,9 +47,45 @@ module.exports = (User) => {
   router.get("/get-user", async (req, res) => {
     const { id } = req.query;
     if (id === undefined) return res.status(400).send(INVALID_SYNTAX);
-    const user = await User.findById(id);
+    const user = await User.findById(mongoose.Types.ObjectId(id));
     if (!user) return res.status(400).send(INVALID_TOKEN);
     return res.status(200).send(user);
+  });
+
+  router.get("/get-user-liked-posts", async (req, res) => {
+    const { userId } = req.query;
+    if (userId === undefined) return res.status(400).send(INVALID_SYNTAX);
+    const user = await User.findById(userId);
+    if (!user) return res.status(401).send(INVALID_TOKEN);
+    const posts = [];
+    for (const id of user.likes) {
+      if (id.length) {
+        const post = await Post.findById(id);
+        if (post) {
+          posts.push(post);
+        }
+      }
+    }
+    console.log(posts);
+    return res.status(200).send(posts);
+  });
+
+  router.get("/get-user-comments", async (req, res) => {
+    const { userId } = req.query;
+    if (userId === undefined) return res.status(400).send(INVALID_SYNTAX);
+    const user = await User.findById(userId);
+    if (!user) return res.status(401).send(INVALID_TOKEN);
+    const comments = await Comment.find({ senderId: userId });
+    const returnComments = [];
+    for (const comment of comments) {
+      const post = await Post.findById(comment.postId);
+      returnComments.push({
+        ...comment._doc,
+        postTitle: post ? post.title : null,
+        postSlug: post ? post.slug : null,
+      });
+    }
+    return res.status(200).send(returnComments);
   });
   return router;
 };

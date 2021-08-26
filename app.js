@@ -14,7 +14,7 @@ const { SECRET_KEY } = require("./lib/config");
 require("./lib/db");
 
 const indexRouter = require("./routes/index");
-const usersRouter = require("./routes/users")(User);
+const usersRouter = require("./routes/users")(User, Post, Comment);
 const postsRouter = require("./routes/posts")(User, Post, Comment);
 const authRouter = require("./routes/auth")(passport);
 

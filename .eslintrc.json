@@ -28,6 +28,8 @@
     "linebreak-style": 0,
     "no-underscore-dangle": "off",
     "import/newline-after-import": 0,
-    "prefer-template":"off"
+    "prefer-template":"off",
+    "no-restricted-syntax":"off",
+    "no-await-in-loop":"off"
   }
 }
