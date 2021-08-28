@@ -1,5 +1,4 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const router = express.Router();
 const {
   INVALID_TOKEN,
@@ -47,7 +46,7 @@ module.exports = (User, Post, Comment) => {
   router.get("/get-user", async (req, res) => {
     const { id } = req.query;
     if (id === undefined) return res.status(400).send(INVALID_SYNTAX);
-    const user = await User.findById(mongoose.Types.ObjectId(id));
+    const user = await User.findById(id);
     if (!user) return res.status(400).send(INVALID_TOKEN);
     return res.status(200).send(user);
   });
