@@ -249,5 +249,19 @@ module.exports = (User, Post, Comment) => {
     comment.save();
     return res.status(200).send({ comment, user });
   });
+
+  router.get("/get-latest-comments", async (req, res) => {
+    const comments = await Comment.find().sort({ createdAt: "desc" }).limit(5);
+    const returnComments = [];
+    for (const comment of comments) {
+      const post = await Post.findById(comment.postId);
+      returnComments.push({
+        ...comment._doc,
+        postTitle: post ? post.title : null,
+        postSlug: post ? post.slug : null,
+      });
+    }
+    return res.status(200).send(returnComments);
+  });
   return router;
 };
