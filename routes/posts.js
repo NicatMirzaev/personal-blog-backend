@@ -270,8 +270,6 @@ module.exports = (User, Post, Comment) => {
     if (commentId === undefined) return res.status(400).send(INVALID_SYNTAX);
     const comment = await Comment.findById(commentId);
     if (!comment) return res.status(404).send(COMMENT_NOT_FOUND);
-    console.log(user);
-    console.log(comment);
     // eslint-disable-next-line eqeqeq
     if (user.moderator !== true && user._id != comment.senderId)
       return res.status(401).send(PERMISSION);
@@ -312,6 +310,40 @@ module.exports = (User, Post, Comment) => {
       });
     }
     return res.status(200).send(returnComments);
+  });
+
+  router.post("/vote", async (req, res) => {
+    const { postId, option } = req.body;
+    if (!req.user) return res.status(400).send(INVALID_TOKEN);
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(401).send(INVALID_TOKEN);
+    if (postId === undefined || option === undefined)
+      return res.status(400).send(INVALID_SYNTAX);
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).send(POST_NOT_FOUND);
+    const hasKey = Object.prototype.hasOwnProperty.call(
+      post.pollOptions,
+      option
+    );
+    const votes = user.votes || {};
+    const pollOptions = post.pollOptions || {};
+    if (hasKey) {
+      if (votes[postId] === undefined) pollOptions[option] += 1;
+      else {
+        pollOptions[votes[postId]] -= 1;
+        pollOptions[option] += 1;
+      }
+      if (votes[postId] === option) delete votes[postId];
+      else votes[postId] = option;
+    }
+    console.log(votes, pollOptions);
+    user.votes = votes;
+    post.pollOptions = pollOptions;
+    post.markModified("pollOptions");
+    user.markModified("votes");
+    post.save();
+    user.save();
+    return res.status(200).send({ post, user });
   });
   return router;
 };

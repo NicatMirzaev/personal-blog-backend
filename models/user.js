@@ -30,6 +30,7 @@ const userSchema = new Schema({
     type: [String],
     required: false,
   },
+  votes: Schema.Types.Mixed,
   createdAt: {
     type: Number,
     default: Date.now(),
