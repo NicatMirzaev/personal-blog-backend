@@ -38,6 +38,15 @@ const postSchema = new Schema({
     type: Number,
     default: 0,
   },
+  pollActive: {
+    type: Boolean,
+    default: false,
+  },
+  pollQuestion: {
+    type: String,
+    default: "",
+  },
+  pollOptions: Schema.Types.Mixed,
   createdAt: {
     type: Number,
     default: Date.now(),

@@ -17,14 +17,29 @@ module.exports = (User, Post, Comment) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
     if (user.moderator !== true) return res.status(401).send(PERMISSION);
-    const { title, img, summary, content, slug, category } = req.body;
+    const {
+      title,
+      img,
+      summary,
+      content,
+      slug,
+      category,
+      pollActive,
+      pollQuestion,
+      pollOptions,
+    } = req.body;
+
     if (
       title === undefined ||
       img === undefined ||
       summary === undefined ||
       content === undefined ||
       slug === undefined ||
-      category === undefined
+      category === undefined ||
+      pollActive === undefined ||
+      pollOptions === undefined ||
+      pollQuestion === undefined ||
+      (pollActive === true && (!pollQuestion.length || pollOptions.length < 2))
     )
       return res.status(400).send(INVALID_SYNTAX);
     if (title.length < 5 || title.length > 100)
@@ -39,6 +54,11 @@ module.exports = (User, Post, Comment) => {
     )
       return res.status(400).send(EMPTY);
 
+    const options = {};
+    pollOptions.forEach((option) => {
+      options[option] = 0;
+    });
+
     const post = new Post({
       title,
       img,
@@ -46,6 +66,9 @@ module.exports = (User, Post, Comment) => {
       slug,
       content,
       category,
+      pollActive,
+      pollQuestion,
+      pollOptions: options,
       createdAt: Date.now(),
     });
     await post.save();
@@ -57,7 +80,18 @@ module.exports = (User, Post, Comment) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
     if (user.moderator !== true) return res.status(401).send(PERMISSION);
-    const { postId, title, img, summary, content, slug, category } = req.body;
+    const {
+      postId,
+      title,
+      img,
+      summary,
+      content,
+      slug,
+      category,
+      pollActive,
+      pollQuestion,
+      pollOptions,
+    } = req.body;
     const post = await Post.findById(postId);
     if (!post) return res.status(404).send(POST_NOT_FOUND);
     if (
@@ -67,7 +101,11 @@ module.exports = (User, Post, Comment) => {
       summary === undefined ||
       content === undefined ||
       slug === undefined ||
-      category === undefined
+      category === undefined ||
+      pollActive === undefined ||
+      pollOptions === undefined ||
+      pollQuestion === undefined ||
+      (pollActive === true && (!pollQuestion.length || pollOptions.length < 2))
     )
       return res.status(400).send(INVALID_SYNTAX);
     if (title.length < 5 || title.length > 100)
@@ -82,12 +120,24 @@ module.exports = (User, Post, Comment) => {
     )
       return res.status(400).send(EMPTY);
 
+    const options = {};
+    pollOptions.forEach((option) => {
+      const hasKey = Object.prototype.hasOwnProperty.call(
+        post.pollOptions,
+        option
+      );
+      options[option] = hasKey ? post.pollOptions[option] : 0;
+    });
+    console.log(options);
     post.title = title;
     post.img = img;
     post.summary = summary;
     post.content = content;
     post.slug = slug;
     post.category = category;
+    post.pollActive = pollActive;
+    post.pollQuestion = pollQuestion;
+    post.pollOptions = options;
     post.save();
     return res.status(200).send({ updated: true });
   });
