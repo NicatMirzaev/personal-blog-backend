@@ -26,6 +26,16 @@ const userSchema = new Schema({
     type: Boolean,
     required: false,
   },
+  lastCommentAt: {
+    type: Number,
+    default: 0,
+    required: false,
+  },
+  point: {
+    type: Number,
+    default: 0,
+    required: false,
+  },
   likes: {
     type: [String],
     required: false,

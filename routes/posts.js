@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const {
   INVALID_TOKEN,
   INVALID_SYNTAX,
@@ -8,13 +9,21 @@ const {
   SLUG_LENGTH,
   EMPTY,
   POST_NOT_FOUND,
+  COMMENT_COOLDOWN,
   COMMENT_NOT_FOUND,
 } = require("../lib/error-codes");
+
+const findByIdFixed = (Model, id) => {
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    return Model.findById(id);
+  }
+  return null;
+};
 
 module.exports = (User, Post, Comment) => {
   router.post("/add-post", async (req, res) => {
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
-    const user = await User.findById(req.user.id);
+    const user = await findByIdFixed(User, req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
     if (user.moderator !== true) return res.status(401).send(PERMISSION);
     const {
@@ -77,7 +86,7 @@ module.exports = (User, Post, Comment) => {
 
   router.post("/update-post", async (req, res) => {
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
-    const user = await User.findById(req.user.id);
+    const user = await findByIdFixed(User, req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
     if (user.moderator !== true) return res.status(401).send(PERMISSION);
     const {
@@ -183,7 +192,7 @@ module.exports = (User, Post, Comment) => {
   router.get("/get-post-by-id", async (req, res) => {
     const { id } = req.query;
     if (id === undefined) return res.status(400).send(INVALID_SYNTAX);
-    const post = await Post.findById(id);
+    const post = await findByIdFixed(Post, id);
     if (!post) return res.status(404).send(POST_NOT_FOUND);
     return res.status(200).send(post);
   });
@@ -197,10 +206,10 @@ module.exports = (User, Post, Comment) => {
   router.post("/delete-post", async (req, res) => {
     const { postId } = req.body;
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
-    const user = await User.findById(req.user.id);
+    const user = await findByIdFixed(User, req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
     if (postId === undefined) return res.status(400).send(INVALID_SYNTAX);
-    const post = await Post.findOne({ _id: postId });
+    const post = await findByIdFixed(Post, postId);
     if (!post) return res.status(404).send(POST_NOT_FOUND);
     if (user.moderator !== true) return res.status(401).send(PERMISSION);
 
@@ -214,18 +223,22 @@ module.exports = (User, Post, Comment) => {
   router.post("/like-post", async (req, res) => {
     const { postId } = req.body;
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
-    const user = await User.findById(req.user.id);
+    const user = await findByIdFixed(User, req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
     if (postId === undefined) return res.status(400).send(INVALID_SYNTAX);
-    const post = await Post.findOne({ _id: postId });
+    const post = await findByIdFixed(Post, postId);
     if (!post) return res.status(404).send(POST_NOT_FOUND);
 
     if (user.likes.includes(post._id)) {
       user.likes.pull(post._id);
       post.likes -= 1;
+      if (user.point === undefined) user.point = 0;
+      else user.point -= 2;
     } else {
       user.likes.push(post._id);
       post.likes += 1;
+      if (user.point === undefined) user.point = 0;
+      user.point += 2;
     }
     user.save();
     post.save();
@@ -235,14 +248,20 @@ module.exports = (User, Post, Comment) => {
   router.post("/add-comment", async (req, res) => {
     const { postId, message } = req.body;
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
-    const user = await User.findById(req.user.id);
+    const user = await findByIdFixed(User, req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
     if (postId === undefined || message === undefined)
       return res.status(400).send(INVALID_SYNTAX);
-    const post = await Post.findById(postId);
+    const post = await findByIdFixed(Post, postId);
     if (!post) return res.status(404).send(POST_NOT_FOUND);
     const messageLength = message.split(" ").join("").length;
     if (messageLength < 2) return res.status(400).send(EMPTY);
+    if (
+      user.lastCommentAt !== undefined &&
+      user.lastCommentAt !== 0 &&
+      user.lastCommentAt + 60000 > Date.now()
+    )
+      return res.status(429).send(COMMENT_COOLDOWN);
     const comment = new Comment({
       senderId: user._id,
       postId: post._id,
@@ -250,8 +269,12 @@ module.exports = (User, Post, Comment) => {
       createdAt: Date.now(),
     });
     post.comments += 1;
+    user.lastCommentAt = Date.now();
+    if (user.point === undefined) user.point = 0;
+    user.point += 3;
     comment.save();
     post.save();
+    user.save();
     return res.status(200).send({ post, comment });
   });
 
@@ -265,10 +288,10 @@ module.exports = (User, Post, Comment) => {
   router.post("/delete-comment", async (req, res) => {
     const { commentId } = req.body;
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
-    const user = await User.findById(req.user.id);
+    const user = await findByIdFixed(User, req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
     if (commentId === undefined) return res.status(400).send(INVALID_SYNTAX);
-    const comment = await Comment.findById(commentId);
+    const comment = await findByIdFixed(Comment, commentId);
     if (!comment) return res.status(404).send(COMMENT_NOT_FOUND);
     // eslint-disable-next-line eqeqeq
     if (user.moderator !== true && user._id != comment.senderId)
@@ -280,18 +303,22 @@ module.exports = (User, Post, Comment) => {
   router.post("/like-comment", async (req, res) => {
     const { commentId } = req.body;
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
-    const user = await User.findById(req.user.id);
+    const user = await findByIdFixed(User, req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
     if (commentId === undefined) return res.status(400).send(INVALID_SYNTAX);
-    const comment = await Comment.findById(commentId);
+    const comment = await findByIdFixed(Comment, commentId);
     if (!comment) return res.status(404).send(COMMENT_NOT_FOUND);
 
     if (user.likes.includes(comment._id)) {
       user.likes.pull(comment._id);
       comment.likes -= 1;
+      if (user.point === undefined) user.point = 0;
+      else user.point -= 2;
     } else {
       user.likes.push(comment._id);
       comment.likes += 1;
+      if (user.point === undefined) user.point = 0;
+      user.point += 2;
     }
     user.save();
     comment.save();
@@ -302,7 +329,7 @@ module.exports = (User, Post, Comment) => {
     const comments = await Comment.find().sort({ createdAt: "desc" }).limit(5);
     const returnComments = [];
     for (const comment of comments) {
-      const post = await Post.findById(comment.postId);
+      const post = await findByIdFixed(Post, comment.postId);
       returnComments.push({
         ...comment._doc,
         postTitle: post ? post.title : null,
@@ -315,11 +342,11 @@ module.exports = (User, Post, Comment) => {
   router.post("/vote", async (req, res) => {
     const { postId, option } = req.body;
     if (!req.user) return res.status(400).send(INVALID_TOKEN);
-    const user = await User.findById(req.user.id);
+    const user = await findByIdFixed(User, req.user.id);
     if (!user) return res.status(401).send(INVALID_TOKEN);
     if (postId === undefined || option === undefined)
       return res.status(400).send(INVALID_SYNTAX);
-    const post = await Post.findById(postId);
+    const post = await findByIdFixed(Post, postId);
     if (!post) return res.status(404).send(POST_NOT_FOUND);
     const hasKey = Object.prototype.hasOwnProperty.call(
       post.pollOptions,
@@ -328,13 +355,17 @@ module.exports = (User, Post, Comment) => {
     const votes = user.votes || {};
     const pollOptions = post.pollOptions || {};
     if (hasKey) {
-      if (votes[postId] === undefined) pollOptions[option] += 1;
-      else {
+      if (votes[postId] === undefined) {
+        pollOptions[option] += 1;
+        user.votes += 2;
+      } else {
         pollOptions[votes[postId]] -= 1;
         pollOptions[option] += 1;
       }
-      if (votes[postId] === option) delete votes[postId];
-      else votes[postId] = option;
+      if (votes[postId] === option) {
+        delete votes[postId];
+        user.votes -= 2;
+      } else votes[postId] = option;
     }
     console.log(votes, pollOptions);
     user.votes = votes;
