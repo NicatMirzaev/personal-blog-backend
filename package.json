@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start-dev": "cross-env NODE_ENV=development nodemon ./bin/www",
-    "start": "cross-env NODE_ENV=production nodemon ./bin/www"
+    "start": "cross-env NODE_ENV=production node ./bin/www"
   },
   "engines": {
     "node": "13.14.x",
