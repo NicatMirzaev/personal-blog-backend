@@ -65,7 +65,11 @@ module.exports = (User, Post, Comment) => {
 
     const options = {};
     pollOptions.forEach((option) => {
-      options[option] = 0;
+      const escapedKey = option
+        .replace(/~/g, "~s")
+        .replace(/\./g, "~p")
+        .replace(/^\$/g, "~d");
+      options[escapedKey] = 0;
     });
 
     const post = new Post({
@@ -131,13 +135,19 @@ module.exports = (User, Post, Comment) => {
 
     const options = {};
     pollOptions.forEach((option) => {
+      const escapedKey = option
+        .replace(/~/g, "~s")
+        .replace(/\./g, "~p")
+        .replace(/^\$/g, "~d");
+
       const hasKey = Object.prototype.hasOwnProperty.call(
         post.pollOptions,
-        option
+        escapedKey
       );
-      options[option] = hasKey ? post.pollOptions[option] : 0;
+
+      options[escapedKey] = hasKey ? post.pollOptions[escapedKey] : 0;
     });
-    console.log(options);
+
     post.title = title;
     post.img = img;
     post.summary = summary;
